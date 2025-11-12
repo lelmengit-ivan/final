@@ -1,4 +1,5 @@
-const API_URL = 'http://localhost:5000/api';
+// Use relative URL so it works on both local and production
+const API_URL = window.location.origin + '/api';
 
 // Store chart instances
 let charts = {};
