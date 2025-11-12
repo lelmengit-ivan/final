@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmacy Management System</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <div class="header-title">
+                    <h1>🏥 Pharmacy Management System</h1>
+                    <p>AI-Powered Inventory & Sales Management</p>
+                </div>
+                <div id="userInfo" class="user-info"></div>
+            </div>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" onclick="showTab('inventory')">Inventory</button>
+            <button class="tab-btn" onclick="showTab('sales')">Sales</button>
+            <button class="tab-btn" onclick="showTab('prescriptions')">Prescriptions</button>
+            <button class="tab-btn" onclick="showTab('suppliers')">Suppliers</button>
+            <button class="tab-btn" onclick="showTab('predictions')">AI Predictions</button>
+            <button class="tab-btn" onclick="showTab('analytics')">Analytics</button>
+            <button class="tab-btn" onclick="showTab('reports')">Reports</button>
+            <button class="tab-btn" onclick="showTab('users')">Users</button>
+        </nav>
+
+        <!-- Inventory Tab -->
+        <div id="inventory" class="tab-content active">
+            <div class="section-header">
+                <h2>Medicine Inventory</h2>
+                <button class="btn btn-primary" onclick="showAddMedicineForm()">+ Add Medicine</button>
+            </div>
+
+            <div id="addMedicineForm" class="form-container" style="display: none;">
+                <h3>Add New Medicine</h3>
+                <form onsubmit="addMedicine(event)">
+                    <input type="text" id="medName" placeholder="Medicine Name" required>
+                    <input type="text" id="medCategory" placeholder="Category" required>
+                    <input type="number" id="medQuantity" placeholder="Quantity" required>
+                    <input type="number" step="0.01" id="medPrice" placeholder="Price" required>
+                    <input type="date" id="medExpiry" required>
+                    <input type="number" id="medReorder" placeholder="Reorder Level" value="10">
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Add Medicine</button>
+                        <button type="button" class="btn btn-secondary" onclick="hideAddMedicineForm()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <table id="medicineTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Expiry Date</th>
+                            <th>Reorder Level</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="medicineTableBody">
+                        <tr><td colspan="7">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sales Tab -->
+        <div id="sales" class="tab-content">
+            <div class="section-header">
+                <h2>Record Sale</h2>
+            </div>
+
+            <div class="form-container">
+                <form onsubmit="recordSale(event)">
+                    <select id="saleMedicine" required>
+                        <option value="">Select Medicine</option>
+                    </select>
+                    <input type="number" id="saleQuantity" placeholder="Quantity" min="1" required>
+                    <select id="paymentMethod" required>
+                        <option value="cash">Cash</option>
+                        <option value="bank">Bank</option>
+                        <option value="mpesa">M-Pesa</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">Record Sale</button>
+                </form>
+            </div>
+
+            <div class="section-header">
+                <h2>Recent Sales</h2>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="searchSales" placeholder="🔍 Search sales..." style="padding: 10px; border: 2px solid #ddd; border-radius: 5px; width: 250px;">
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="salesTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Medicine</th>
+                            <th style="width: 10%; text-align: center;">Quantity</th>
+                            <th style="width: 15%; text-align: right;">Total Price</th>
+                            <th style="width: 20%; text-align: center;">Payment Method</th>
+                            <th style="width: 25%; text-align: center;">Date & Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesTableBody">
+                        <tr><td colspan="5">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Suppliers Tab -->
+        <div id="suppliers" class="tab-content">
+            <div class="section-header">
+                <h2>Supplier Management</h2>
+                <button class="btn btn-primary" onclick="showAddSupplierForm()">+ Add Supplier</button>
+            </div>
+
+            <div id="addSupplierForm" class="form-container" style="display: none;">
+                <h3>Add New Supplier</h3>
+                <form onsubmit="addSupplier(event)">
+                    <input type="text" id="supplierName" placeholder="Supplier Name" required>
+                    <input type="text" id="supplierContact" placeholder="Contact Person" required>
+                    <input type="tel" id="supplierPhone" placeholder="Phone Number" required>
+                    <input type="email" id="supplierEmail" placeholder="Email" required>
+                    <input type="text" id="supplierAddress" placeholder="Address" required>
+                    <input type="number" step="0.1" id="supplierRating" placeholder="Rating (0-5)" min="0" max="5" value="0">
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Add Supplier</button>
+                        <button type="button" class="btn btn-secondary" onclick="hideAddSupplierForm()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="suppliers-grid" id="suppliersGrid">
+                <div class="loading">Loading suppliers...</div>
+            </div>
+        </div>
+
+        <!-- Prescriptions Tab -->
+        <div id="prescriptions" class="tab-content">
+            <div class="section-header">
+                <h2>Prescription Management</h2>
+                <button class="btn btn-primary" onclick="showAddPrescriptionForm()">+ New Prescription</button>
+            </div>
+
+            <div id="addPrescriptionForm" class="form-container" style="display: none;">
+                <h3>New Prescription</h3>
+                <form onsubmit="addPrescription(event)">
+                    <input type="text" id="patientName" placeholder="Patient Name" required>
+                    <input type="tel" id="patientPhone" placeholder="Patient Phone" required>
+                    <input type="text" id="doctorName" placeholder="Doctor Name" required>
+                    <input type="date" id="prescriptionDate" required>
+                    <textarea id="prescriptionNotes" placeholder="Notes" rows="2"></textarea>
+                    
+                    <div style="grid-column: 1 / -1;">
+                        <h4>Medicines</h4>
+                        <div id="prescriptionMedicines">
+                            <div class="prescription-medicine-row">
+                                <select class="prescription-medicine" required>
+                                    <option value="">Select Medicine</option>
+                                </select>
+                                <input type="number" class="prescription-quantity" placeholder="Qty" min="1" required>
+                                <input type="text" class="prescription-dosage" placeholder="Dosage (e.g., 2x daily)" required>
+                                <input type="text" class="prescription-duration" placeholder="Duration (e.g., 7 days)" required>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-secondary" onclick="addPrescriptionMedicineRow()">+ Add Medicine</button>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Create Prescription</button>
+                        <button type="button" class="btn btn-secondary" onclick="hideAddPrescriptionForm()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="prescription-filters">
+                <button class="filter-btn active" onclick="filterPrescriptions('all')">All</button>
+                <button class="filter-btn" onclick="filterPrescriptions('pending')">Pending</button>
+                <button class="filter-btn" onclick="filterPrescriptions('completed')">Completed</button>
+                <button class="filter-btn" onclick="filterPrescriptions('cancelled')">Cancelled</button>
+            </div>
+
+            <div class="prescriptions-grid" id="prescriptionsGrid">
+                <div class="loading">Loading prescriptions...</div>
+            </div>
+        </div>
+
+        <!-- Predictions Tab -->
+        <div id="predictions" class="tab-content">
+            <div class="section-header">
+                <h2>AI Stock Predictions</h2>
+                <button class="btn btn-primary" onclick="loadPredictions()">🔄 Refresh</button>
+            </div>
+
+            <div class="predictions-grid" id="predictionsGrid">
+                <div class="loading">Loading predictions...</div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics" class="tab-content">
+            <div class="section-header">
+                <h2>Analytics Dashboard</h2>
+                <button class="btn btn-primary" onclick="loadAnalytics()">🔄 Refresh</button>
+            </div>
+
+            <div class="analytics-grid">
+                <div class="chart-container">
+                    <h3>Sales Trend (Last 30 Days)</h3>
+                    <canvas id="salesTrendChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Top Selling Medicines</h3>
+                    <canvas id="topMedicinesChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Inventory Status</h3>
+                    <canvas id="inventoryChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Category Distribution</h3>
+                    <canvas id="categoryChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Revenue Trend</h3>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Stock Prediction vs Current</h3>
+                    <canvas id="predictionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div id="reports" class="tab-content">
+            <div class="section-header">
+                <h2>Reports & Analytics</h2>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-primary" onclick="downloadPDF()">📄 Download PDF</button>
+                    <button class="btn btn-primary" onclick="downloadExcel()">📊 Download Excel</button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <div class="summary-icon">💊</div>
+                    <div class="summary-content">
+                        <h3 id="totalMedicines">0</h3>
+                        <p>Total Medicines</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon">⚠️</div>
+                    <div class="summary-content">
+                        <h3 id="lowStockCount">0</h3>
+                        <p>Low Stock Items</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon">💰</div>
+                    <div class="summary-content">
+                        <h3 id="totalRevenue">KSH 0</h3>
+                        <p>Total Revenue</p>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon">📈</div>
+                    <div class="summary-content">
+                        <h3 id="todaySales">0</h3>
+                        <p>Today's Sales</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search & Filter -->
+            <div class="form-container">
+                <h3>Search & Filter Sales</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <input type="text" id="searchMedicine" placeholder="Search medicine..." onkeyup="filterReports()">
+                    <input type="date" id="startDate" onchange="filterReports()">
+                    <input type="date" id="endDate" onchange="filterReports()">
+                    <select id="filterPayment" onchange="filterReports()">
+                        <option value="">All Payments</option>
+                        <option value="cash">Cash</option>
+                        <option value="bank">Bank</option>
+                        <option value="mpesa">M-Pesa</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="clearFilters()">Clear</button>
+                </div>
+            </div>
+
+            <!-- Payment Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Sales</h3>
+                    <p class="stat-value" id="totalSalesCount">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Cash</h3>
+                    <p class="stat-value" id="cashSales">KSH 0.00</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Bank</h3>
+                    <p class="stat-value" id="bankSales">KSH 0.00</p>
+                </div>
+                <div class="stat-card">
+                    <h3>M-Pesa</h3>
+                    <p class="stat-value" id="mpesaSales">KSH 0.00</p>
+                </div>
+            </div>
+
+            <!-- Report Content -->
+            <div class="report-content" id="reportContent">
+                <div class="report-section">
+                    <h3>Top Selling Medicines</h3>
+                    <div class="table-container">
+                        <table id="topSellingTable">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Medicine</th>
+                                    <th>Category</th>
+                                    <th>Units Sold</th>
+                                    <th>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topSellingBody">
+                                <tr><td colspan="5">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <h3>Low Stock Alert</h3>
+                    <div class="table-container">
+                        <table id="lowStockTable">
+                            <thead>
+                                <tr>
+                                    <th>Medicine</th>
+                                    <th>Current Stock</th>
+                                    <th>Reorder Level</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lowStockBody">
+                                <tr><td colspan="4">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <h3>Expiring Soon (Next 90 Days)</h3>
+                    <div class="table-container">
+                        <table id="expiryTable">
+                            <thead>
+                                <tr>
+                                    <th>Medicine</th>
+                                    <th>Quantity</th>
+                                    <th>Expiry Date</th>
+                                    <th>Days Left</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expiryBody">
+                                <tr><td colspan="4">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sales Records Table -->
+            <div class="report-section">
+                <h3>Sales Records</h3>
+                <div class="table-container">
+                    <table id="reportsTable">
+                        <thead>
+                            <tr>
+                                <th>Medicine</th>
+                                <th style="text-align: center;">Qty</th>
+                                <th style="text-align: right;">Price</th>
+                                <th style="text-align: center;">Payment</th>
+                                <th style="text-align: center;">Date & Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportsTableBody">
+                            <tr><td colspan="5">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="users" class="tab-content">
+            <div class="section-header">
+                <h2>User Management</h2>
+                <button class="btn btn-primary" onclick="showAddUserForm()">+ Add User</button>
+            </div>
+
+            <div id="addUserForm" class="form-container" style="display: none;">
+                <h3>Add New User</h3>
+                <form onsubmit="addUser(event)">
+                    <input type="text" id="newUsername" placeholder="Username" required>
+                    <input type="text" id="newFullName" placeholder="Full Name" required>
+                    <input type="email" id="newEmail" placeholder="Email" required>
+                    <input type="password" id="newPassword" placeholder="Password" required minlength="6">
+                    <select id="newRole" required>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Add User</button>
+                        <button type="button" class="btn btn-secondary" onclick="hideAddUserForm()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="table-container">
+                <table id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Created Date</th>
+                            <th>Last Login</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="7">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

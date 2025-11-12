@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Frontend Test</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ddd; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Frontend API Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let token = null;
+        
+        function log(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = 'test ' + (isError ? 'error' : 'success');
+            div.textContent = message;
+            document.getElementById('results').appendChild(div);
+        }
+        
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            };
+        }
+        
+        async function testLogin() {
+            log('Testing login...');
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@pharmacy.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    token = data.token;
+                    localStorage.setItem('token', token);
+                    log('✅ Login successful! Token saved.');
+                    return true;
+                } else {
+                    log('❌ Login failed: ' + response.status, true);
+                    return false;
+                }
+            } catch (error) {
+                log('❌ Login error: ' + error.message, true);
+                return false;
+            }
+        }
+        
+        async function testMedicines() {
+            log('Testing medicines endpoint...');
+            try {
+                const response = await fetch(`${API_URL}/medicines`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Medicines loaded: ${data.length} items`);
+                } else {
+                    log(`❌ Medicines failed: ${response.status}`, true);
+                }
+            } catch (error) {
+                log('❌ Medicines error: ' + error.message, true);
+            }
+        }
+        
+        async function testSuppliers() {
+            log('Testing suppliers endpoint...');
+            try {
+                const response = await fetch(`${API_URL}/suppliers`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Suppliers loaded: ${data.length} items`);
+                } else {
+                    log(`❌ Suppliers failed: ${response.status}`, true);
+                }
+            } catch (error) {
+                log('❌ Suppliers error: ' + error.message, true);
+            }
+        }
+        
+        async function testPrescriptions() {
+            log('Testing prescriptions endpoint...');
+            try {
+                const response = await fetch(`${API_URL}/prescriptions`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Prescriptions loaded: ${data.length} items`);
+                } else {
+                    log(`❌ Prescriptions failed: ${response.status}`, true);
+                }
+            } catch (error) {
+                log('❌ Prescriptions error: ' + error.message, true);
+            }
+        }
+        
+        async function runAllTests() {
+            document.getElementById('results').innerHTML = '';
+            const loggedIn = await testLogin();
+            if (loggedIn) {
+                await testMedicines();
+                await testSuppliers();
+                await testPrescriptions();
+                log('=== All tests complete ===');
+            }
+        }
+        
+        // Auto-run on load
+        window.onload = runAllTests;
+    </script>
+    
+    <button onclick="runAllTests()">Run Tests Again</button>
+</body>
+</html>
