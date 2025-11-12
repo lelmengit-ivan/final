@@ -1,23 +1,53 @@
 import sqlite3
 import json
 from datetime import datetime
+import os
 
 class PharmacyDB:
     def __init__(self, db_name='pharmacy.db'):
         self.db_name = db_name
+        
+        # Check if we're on Heroku (DATABASE_URL will be set)
+        database_url = os.environ.get('DATABASE_URL')
+        
+        if database_url:
+            # We're on Heroku - use PostgreSQL
+            try:
+                import psycopg2
+                # Heroku uses postgres:// but psycopg2 needs postgresql://
+                if database_url.startswith('postgres://'):
+                    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+                self.db_url = database_url
+                self.use_postgres = True
+                print("Using PostgreSQL database")
+            except ImportError:
+                print("Warning: psycopg2 not installed, falling back to SQLite")
+                self.use_postgres = False
+        else:
+            # Local development - use SQLite
+            self.use_postgres = False
+            print("Using SQLite database")
+        
         self.init_db()
     
     def get_connection(self):
-        return sqlite3.connect(self.db_name)
+        if self.use_postgres:
+            import psycopg2
+            return psycopg2.connect(self.db_url)
+        else:
+            return sqlite3.connect(self.db_name)
     
     def init_db(self):
         conn = self.get_connection()
         cursor = conn.cursor()
         
+        # Use SERIAL for PostgreSQL, INTEGER for SQLite
+        id_type = "SERIAL PRIMARY KEY" if self.use_postgres else "INTEGER PRIMARY KEY AUTOINCREMENT"
+        
         # Organizations table (multi-tenancy)
-        cursor.execute('''
+        cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS organizations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {id_type},
                 name TEXT NOT NULL,
                 subdomain TEXT UNIQUE,
                 contact_email TEXT NOT NULL,
@@ -33,9 +63,9 @@ class PharmacyDB:
         ''')
         
         # Medicines table
-        cursor.execute('''
+        cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS medicines (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {id_type},
                 user_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 category TEXT,
@@ -48,9 +78,9 @@ class PharmacyDB:
         ''')
         
         # Sales table
-        cursor.execute('''
+        cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS sales (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {id_type},
                 user_id INTEGER NOT NULL,
                 medicine_id INTEGER,
                 quantity INTEGER,
@@ -63,9 +93,9 @@ class PharmacyDB:
         ''')
         
         # Suppliers table
-        cursor.execute('''
+        cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS suppliers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {id_type},
                 user_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
                 contact_person TEXT,
@@ -79,9 +109,9 @@ class PharmacyDB:
         ''')
         
         # Medicine-Supplier relationship table
-        cursor.execute('''
+        cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS medicine_suppliers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {id_type},
                 medicine_id INTEGER,
                 supplier_id INTEGER,
                 supply_price REAL,
@@ -92,9 +122,9 @@ class PharmacyDB:
         ''')
         
         # Prescriptions table
-        cursor.execute('''
+        cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS prescriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {id_type},
                 user_id INTEGER NOT NULL,
                 patient_name TEXT NOT NULL,
                 patient_phone TEXT,
@@ -108,9 +138,9 @@ class PharmacyDB:
         ''')
         
         # Prescription items table
-        cursor.execute('''
+        cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS prescription_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {id_type},
                 prescription_id INTEGER,
                 medicine_id INTEGER,
                 quantity INTEGER,
@@ -122,9 +152,9 @@ class PharmacyDB:
         ''')
         
         # Users table for authentication (with organization)
-        cursor.execute('''
+        cursor.execute(f'''
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id {id_type},
                 organization_id INTEGER NOT NULL,
                 username TEXT NOT NULL,
                 password TEXT NOT NULL,
