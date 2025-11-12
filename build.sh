@@ -4,5 +4,8 @@ set -o errexit
 
 pip install -r requirements.txt
 
-# Run database migration
-python migrate_to_multitenancy.py
+# Initialize and migrate database
+echo "Initializing database..."
+python init_render_db.py
+
+echo "Build completed successfully!"
