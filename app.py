@@ -232,7 +232,8 @@ def login():
     
     if user:
         # Check organization subscription status
-        cursor.execute('SELECT subscription_status FROM organizations WHERE id = ?', (user[5],))
+        query = db.convert_query('SELECT subscription_status FROM organizations WHERE id = ?')
+        cursor.execute(query, (user[5],))
         org_status = cursor.fetchone()
         
         if org_status and org_status[0] != 'active':
@@ -240,8 +241,8 @@ def login():
             return jsonify({'error': 'Organization subscription is not active'}), 403
         
         # Update last login
-        cursor.execute('UPDATE users SET last_login = ? WHERE id = ?', 
-                      (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user[0]))
+        query = db.convert_query('UPDATE users SET last_login = ? WHERE id = ?')
+        cursor.execute(query, (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user[0]))
         conn.commit()
         conn.close()
         
