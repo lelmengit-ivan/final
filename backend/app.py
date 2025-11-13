@@ -703,12 +703,12 @@ def delete_prescription(prescription_id):
 def get_organizations():
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         SELECT id, name, subdomain, contact_email, contact_phone, address, 
                subscription_plan, subscription_status, created_date, expiry_date, max_users
         FROM organizations
         ORDER BY created_date DESC
-    ''')
+    '''))
     organizations = cursor.fetchall()
     conn.close()
     
