@@ -409,7 +409,7 @@ def get_sales():
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         SELECT s.id, m.name, s.quantity, s.total_price, s.sale_date, 
                COALESCE(s.payment_method, 'cash') as payment_method
         FROM sales s
@@ -417,7 +417,7 @@ def get_sales():
         WHERE s.user_id = ?
         ORDER BY s.id DESC
         LIMIT 50
-    ''', (user_id,))
+    '''), (user_id,))
     sales = cursor.fetchall()
     conn.close()
     
