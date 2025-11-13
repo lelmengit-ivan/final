@@ -1,0 +1,60 @@
+# Render Ignore - Files not needed for deployment
+
+# Local development
+*.db
+pharmacy.db
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing files
+test_*.py
+check_*.py
+debug_*.html
+test_*.html
+
+# Documentation (optional - remove if you want docs deployed)
+docs/
+*.md
+!README.md
+
+# Backup files
+backups/
+*.bak
+*.backup
+
+# Scripts not needed in production
+scripts/
+organize_for_deployment.py
+fix_*.py
+optimize_database.py
+migrate_to_multitenancy.py
+migrate_users_both_db.py
+
+# Other platform configs
+.vercelignore
+vercel.json
+requirements-vercel.txt
+requirements-heroku.txt
+Procfile
+runtime.txt
+deploy_heroku.sh
+setup_vercel.py
+
+# Local config
+config.js
+run.bat
+run.sh
+
+# Git
+.git/
+.gitignore
