@@ -14,6 +14,14 @@ app.config['JWT_EXPIRATION_HOURS'] = 24
 
 CORS(app, resources={r"/*": {"origins": "*"}})
 
+# Or specific origins (recommended)
+CORS(app, resources={r"/*": {
+    "origins": [
+        "https://pharmacy-4gjn.onrender.com",
+        "http://localhost:5000"  # for local development
+    ]
+}})
+
 db = PharmacyDB()
 predictor = StockPredictor()
 
