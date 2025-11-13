@@ -114,12 +114,12 @@ def register_organization():
             return jsonify({'error': 'Subdomain already taken'}), 400
     
     # Create organization
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         INSERT INTO organizations (name, subdomain, contact_email, contact_phone, address, 
                                    subscription_plan, subscription_status, created_date, 
                                    expiry_date, max_users, settings)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (data['organization_name'], data.get('subdomain'), data['contact_email'], 
+    '''), (data['organization_name'], data.get('subdomain'), data['contact_email'], 
           data.get('contact_phone', ''), data.get('address', ''), 
           data.get('subscription_plan', 'free'), 'active', 
           datetime.now().strftime('%Y-%m-%d'),
@@ -130,10 +130,10 @@ def register_organization():
     
     # Create admin user for the organization
     hashed_password = hash_password(data['password'])
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
+    '''), (organization_id, data['username'], hashed_password, data['full_name'], 
           data['email'], 'admin', datetime.now().strftime('%Y-%m-%d')))
     
     user_id = cursor.lastrowid
@@ -186,10 +186,10 @@ def register():
     
     # Create new user
     hashed_password = hash_password(data['password'])
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
+    '''), (organization_id, data['username'], hashed_password, data['full_name'], 
           data['email'], 'user', datetime.now().strftime('%Y-%m-%d')))
     
     conn.commit()
@@ -318,10 +318,10 @@ def add_medicine():
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         INSERT INTO medicines (user_id, name, category, quantity, price, expiry_date, reorder_level)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (user_id, data['name'], data['category'], data['quantity'], 
+    '''), (user_id, data['name'], data['category'], data['quantity'], 
           data['price'], data['expiry_date'], data.get('reorder_level', 10)))
     
     conn.commit()
@@ -338,11 +338,11 @@ def update_medicine(med_id):
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         UPDATE medicines 
         SET name=?, category=?, quantity=?, price=?, expiry_date=?, reorder_level=?
         WHERE id=? AND user_id=?
-    ''', (data['name'], data['category'], data['quantity'], 
+    '''), (data['name'], data['category'], data['quantity'], 
           data['price'], data['expiry_date'], data.get('reorder_level', 10), med_id, user_id))
     
     conn.commit()
@@ -388,15 +388,15 @@ def add_sale():
     # Record sale with current date and time
     total_price = price * data['quantity']
     sale_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         INSERT INTO sales (user_id, medicine_id, quantity, total_price, sale_date, payment_method)
         VALUES (?, ?, ?, ?, ?, ?)
-    ''', (user_id, data['medicine_id'], data['quantity'], total_price, sale_datetime, payment_method))
+    '''), (user_id, data['medicine_id'], data['quantity'], total_price, sale_datetime, payment_method))
     
     # Update stock
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         UPDATE medicines SET quantity = quantity - ? WHERE id = ? AND user_id = ?
-    ''', (data['quantity'], data['medicine_id'], user_id))
+    '''), (data['quantity'], data['medicine_id'], user_id))
     
     conn.commit()
     conn.close()
@@ -409,7 +409,7 @@ def get_sales():
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         SELECT s.id, m.name, s.quantity, s.total_price, s.sale_date, 
                COALESCE(s.payment_method, 'cash') as payment_method
         FROM sales s
@@ -417,7 +417,7 @@ def get_sales():
         WHERE s.user_id = ?
         ORDER BY s.id DESC
         LIMIT 50
-    ''', (user_id,))
+    '''), (user_id,))
     sales = cursor.fetchall()
     conn.close()
     
@@ -505,10 +505,10 @@ def add_supplier():
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         INSERT INTO suppliers (user_id, name, contact_person, phone, email, address, rating, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user_id, data['name'], data['contact_person'], data['phone'], 
+    '''), (user_id, data['name'], data['contact_person'], data['phone'], 
           data['email'], data['address'], data.get('rating', 0), 
           datetime.now().strftime('%Y-%m-%d')))
     
@@ -526,11 +526,11 @@ def update_supplier(supplier_id):
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         UPDATE suppliers 
         SET name=?, contact_person=?, phone=?, email=?, address=?, rating=?
         WHERE id=? AND user_id=?
-    ''', (data['name'], data['contact_person'], data['phone'], 
+    '''), (data['name'], data['contact_person'], data['phone'], 
           data['email'], data['address'], data.get('rating', 0), supplier_id, user_id))
     
     conn.commit()
@@ -603,12 +603,12 @@ def get_prescriptions():
     result = []
     for presc in prescriptions:
         # Get prescription items
-        cursor.execute('''
+        cursor.execute(db.convert_query('''
             SELECT pi.id, pi.prescription_id, pi.medicine_id, pi.quantity, pi.dosage, pi.duration, m.name as medicine_name
             FROM prescription_items pi
             JOIN medicines m ON pi.medicine_id = m.id
             WHERE pi.prescription_id = ?
-        ''', (presc[0],))
+        '''), (presc[0],))
         items = cursor.fetchall()
         
         result.append({
@@ -641,10 +641,10 @@ def add_prescription():
     cursor = conn.cursor()
     
     # Insert prescription
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         INSERT INTO prescriptions (user_id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user_id, data['patient_name'], data['patient_phone'], data['doctor_name'],
+    '''), (user_id, data['patient_name'], data['patient_phone'], data['doctor_name'],
           data['prescription_date'], 'pending', data.get('notes', ''),
           datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     
@@ -652,10 +652,10 @@ def add_prescription():
     
     # Insert prescription items
     for item in data['items']:
-        cursor.execute('''
+        cursor.execute(db.convert_query('''
             INSERT INTO prescription_items (prescription_id, medicine_id, quantity, dosage, duration)
             VALUES (?, ?, ?, ?, ?)
-        ''', (prescription_id, item['medicine_id'], item['quantity'], item['dosage'], item['duration']))
+        '''), (prescription_id, item['medicine_id'], item['quantity'], item['dosage'], item['duration']))
     
     conn.commit()
     conn.close()
@@ -738,11 +738,11 @@ def get_organization(org_id):
     
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         SELECT id, name, subdomain, contact_email, contact_phone, address, 
                subscription_plan, subscription_status, created_date, expiry_date, max_users, settings
         FROM organizations WHERE id = ?
-    ''', (org_id,))
+    '''), (org_id,))
     org = cursor.fetchone()
     
     if not org:
@@ -782,11 +782,11 @@ def update_organization(org_id):
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         UPDATE organizations 
         SET name=?, contact_email=?, contact_phone=?, address=?, settings=?
         WHERE id=?
-    ''', (data['name'], data['contact_email'], data.get('contact_phone', ''), 
+    '''), (data['name'], data['contact_email'], data.get('contact_phone', ''), 
           data.get('address', ''), data.get('settings', '{}'), org_id))
     
     conn.commit()
@@ -806,11 +806,11 @@ def update_subscription(org_id):
     cursor = conn.cursor()
     
     # Update subscription plan
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         UPDATE organizations 
         SET subscription_plan=?, subscription_status=?, expiry_date=?, max_users=?
         WHERE id=?
-    ''', (data['subscription_plan'], data.get('subscription_status', 'active'),
+    '''), (data['subscription_plan'], data.get('subscription_status', 'active'),
           data.get('expiry_date'), data.get('max_users', 5), org_id))
     
     conn.commit()
@@ -829,10 +829,10 @@ def get_users():
     organization_id = request.current_user['organization_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         SELECT id, username, full_name, email, role, created_date, last_login 
         FROM users WHERE organization_id = ?
-    ''', (organization_id,))
+    '''), (organization_id,))
     users = cursor.fetchall()
     conn.close()
     
@@ -880,10 +880,10 @@ def add_user():
     
     # Create new user
     hashed_password = hash_password(data['password'])
-    cursor.execute('''
+    cursor.execute(db.convert_query('''
         INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
+    '''), (organization_id, data['username'], hashed_password, data['full_name'], 
           data['email'], data.get('role', 'user'), datetime.now().strftime('%Y-%m-%d')))
     
     conn.commit()
