@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Organization - Pharmacy Management System</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+    <style>
+        .register-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .register-container h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .register-container p {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .form-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .form-section:last-child {
+            border-bottom: none;
+        }
+        .form-section h3 {
+            color: #34495e;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-weight: 500;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+        .btn-register {
+            width: 100%;
+            padding: 12px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .btn-register:hover {
+            background: #229954;
+        }
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            color: #7f8c8d;
+        }
+        .login-link a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .plan-info {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .plan-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .plan-info li {
+            margin: 5px 0;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h1>🏥 Register Your Pharmacy</h1>
+        <p>Start managing your pharmacy with our comprehensive system</p>
+        
+        <div id="alertMessage"></div>
+        
+        <form id="registerForm">
+            <div class="form-section">
+                <h3>Organization Information</h3>
+                <div class="form-group">
+                    <label for="organizationName">Pharmacy/Organization Name *</label>
+                    <input type="text" id="organizationName" required>
+                </div>
+                <div class="form-group">
+                    <label for="subdomain">Subdomain (Optional)</label>
+                    <input type="text" id="subdomain" placeholder="e.g., mypharmacy">
+                    <small>Your unique identifier: subdomain.pharmacy.com</small>
+                </div>
+                <div class="form-group">
+                    <label for="contactEmail">Contact Email *</label>
+                    <input type="email" id="contactEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="contactPhone">Contact Phone</label>
+                    <input type="tel" id="contactPhone">
+                </div>
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <input type="text" id="address">
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>Admin Account</h3>
+                <div class="form-group">
+                    <label for="fullName">Full Name *</label>
+                    <input type="text" id="fullName" required>
+                </div>
+                <div class="form-group">
+                    <label for="username">Username *</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email *</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password *</label>
+                    <input type="password" id="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm Password *</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h3>Subscription Plan</h3>
+                <div class="form-group">
+                    <label for="subscriptionPlan">Select Plan *</label>
+                    <select id="subscriptionPlan" required>
+                        <option value="free">Free Trial (30 days)</option>
+                        <option value="basic">Basic - KSH 2,000/month</option>
+                        <option value="professional">Professional - KSH 5,000/month</option>
+                        <option value="enterprise">Enterprise - KSH 10,000/month</option>
+                    </select>
+                </div>
+                <div class="plan-info" id="planInfo">
+                    <strong>Free Trial includes:</strong>
+                    <ul>
+                        <li>Up to 5 users</li>
+                        <li>Basic inventory management</li>
+                        <li>Sales tracking</li>
+                        <li>30 days access</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-register">Register Organization</button>
+        </form>
+        
+        <div class="login-link">
+            Already have an account? <a href="/login">Login here</a>
+        </div>
+    </div>
+
+    <script>
+        const planDetails = {
+            free: {
+                title: 'Free Trial includes:',
+                features: [
+                    'Up to 5 users',
+                    'Basic inventory management',
+                    'Sales tracking',
+                    '30 days access'
+                ]
+            },
+            basic: {
+                title: 'Basic Plan includes:',
+                features: [
+                    'Up to 10 users',
+                    'Full inventory management',
+                    'Sales & reports',
+                    'Email support',
+                    'Monthly billing'
+                ]
+            },
+            professional: {
+                title: 'Professional Plan includes:',
+                features: [
+                    'Up to 25 users',
+                    'Advanced analytics',
+                    'AI predictions',
+                    'Priority support',
+                    'Custom reports'
+                ]
+            },
+            enterprise: {
+                title: 'Enterprise Plan includes:',
+                features: [
+                    'Unlimited users',
+                    'All features',
+                    'Dedicated support',
+                    'Custom integrations',
+                    'Training included'
+                ]
+            }
+        };
+
+        document.getElementById('subscriptionPlan').addEventListener('change', function() {
+            const plan = this.value;
+            const planInfo = document.getElementById('planInfo');
+            const details = planDetails[plan];
+            
+            planInfo.innerHTML = `
+                <strong>${details.title}</strong>
+                <ul>
+                    ${details.features.map(f => `<li>${f}</li>`).join('')}
+                </ul>
+            `;
+        });
+
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                showAlert('Passwords do not match', 'error');
+                return;
+            }
+            
+            const maxUsers = {
+                'free': 5,
+                'basic': 10,
+                'professional': 25,
+                'enterprise': 999
+            };
+            
+            const data = {
+                organization_name: document.getElementById('organizationName').value,
+                subdomain: document.getElementById('subdomain').value || null,
+                contact_email: document.getElementById('contactEmail').value,
+                contact_phone: document.getElementById('contactPhone').value,
+                address: document.getElementById('address').value,
+                full_name: document.getElementById('fullName').value,
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: password,
+                subscription_plan: document.getElementById('subscriptionPlan').value,
+                max_users: maxUsers[document.getElementById('subscriptionPlan').value]
+            };
+            
+            try {
+                const response = await fetch('/api/organizations/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Organization registered successfully! Redirecting to login...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    showAlert(result.error || 'Registration failed', 'error');
+                }
+            } catch (error) {
+                showAlert('Network error. Please try again.', 'error');
+            }
+        });
+        
+        function showAlert(message, type) {
+            const alertDiv = document.getElementById('alertMessage');
+            alertDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                alertDiv.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

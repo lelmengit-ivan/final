@@ -1,0 +1,17 @@
+﻿        tbody.innerHTML = sales.map(sale => {
+            const method = sale.payment_method || 'cash';
+            let badge = '';
+            if (method === 'cash') badge = '<span class=\"payment-badge payment-cash\">💵 Cash</span>';
+            else if (method === 'bank') badge = '<span class=\"payment-badge payment-bank\">🏦 Bank</span>';
+            else if (method === 'mpesa') badge = '<span class=\"payment-badge payment-mpesa\">📱 M-Pesa</span>';
+            
+            return `
+              <tr>
+                  <td>${sale.medicine_name}</td>
+                  <td>${sale.quantity}</td>
+                  <td>$${sale.total_price.toFixed(2)}</td>
+                  <td>${badge}</td>
+                  <td>${sale.sale_date}</td>
+              </tr>
+            `;
+        }).join('');
