@@ -293,7 +293,7 @@ def get_medicines():
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT id, name, category, quantity, price, expiry_date, reorder_level FROM medicines WHERE user_id = ?', (user_id,))
+    cursor.execute(db.convert_query('SELECT id, name, category, quantity, price, expiry_date, reorder_level FROM medicines WHERE user_id = ?'), (user_id,))
     medicines = cursor.fetchall()
     conn.close()
     
