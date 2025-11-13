@@ -818,10 +818,6 @@ def update_subscription(org_id):
     
     return jsonify({'message': 'Subscription updated successfully'})
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
-
-
 # User Management endpoints
 @app.route('/api/users', methods=['GET'])
 @token_required
@@ -923,3 +919,6 @@ def delete_user(user_id):
     conn.close()
     
     return jsonify({'message': 'User deleted successfully'})
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
