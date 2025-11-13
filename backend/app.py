@@ -108,18 +108,18 @@ def register_organization():
     
     # Check if subdomain already exists
     if data.get('subdomain'):
-        cursor.execute(db.convert_query('SELECT id FROM organizations WHERE subdomain = ?'), (data['subdomain'],))
+        cursor.execute('SELECT id FROM organizations WHERE subdomain = ?', (data['subdomain'],))
         if cursor.fetchone():
             conn.close()
             return jsonify({'error': 'Subdomain already taken'}), 400
     
     # Create organization
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         INSERT INTO organizations (name, subdomain, contact_email, contact_phone, address, 
                                    subscription_plan, subscription_status, created_date, 
                                    expiry_date, max_users, settings)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    '''), (data['organization_name'], data.get('subdomain'), data['contact_email'], 
+    ''', (data['organization_name'], data.get('subdomain'), data['contact_email'], 
           data.get('contact_phone', ''), data.get('address', ''), 
           data.get('subscription_plan', 'free'), 'active', 
           datetime.now().strftime('%Y-%m-%d'),
@@ -130,10 +130,10 @@ def register_organization():
     
     # Create admin user for the organization
     hashed_password = hash_password(data['password'])
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    '''), (organization_id, data['username'], hashed_password, data['full_name'], 
+    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
           data['email'], 'admin', datetime.now().strftime('%Y-%m-%d')))
     
     user_id = cursor.lastrowid
@@ -160,7 +160,7 @@ def register():
         return jsonify({'error': 'Organization ID is required'}), 400
     
     # Check if organization exists and is active
-    cursor.execute(db.convert_query('SELECT subscription_status, max_users FROM organizations WHERE id = ?'), (organization_id,))
+    cursor.execute('SELECT subscription_status, max_users FROM organizations WHERE id = ?', (organization_id,))
     org = cursor.fetchone()
     if not org:
         conn.close()
@@ -171,14 +171,14 @@ def register():
         return jsonify({'error': 'Organization subscription is not active'}), 403
     
     # Check user limit
-    cursor.execute(db.convert_query('SELECT COUNT(*) FROM users WHERE organization_id = ?'), (organization_id,))
+    cursor.execute('SELECT COUNT(*) FROM users WHERE organization_id = ?', (organization_id,))
     user_count = cursor.fetchone()[0]
     if user_count >= org[1]:
         conn.close()
         return jsonify({'error': 'Maximum user limit reached for this organization'}), 403
     
     # Check if username or email already exists in this organization
-    cursor.execute(db.convert_query('SELECT id FROM users WHERE organization_id = ? AND (username = ? OR email = ?)'), 
+    cursor.execute('SELECT id FROM users WHERE organization_id = ? AND (username = ? OR email = ?)', 
                    (organization_id, data['username'], data['email']))
     if cursor.fetchone():
         conn.close()
@@ -186,10 +186,10 @@ def register():
     
     # Create new user
     hashed_password = hash_password(data['password'])
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    '''), (organization_id, data['username'], hashed_password, data['full_name'], 
+    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
           data['email'], 'user', datetime.now().strftime('%Y-%m-%d')))
     
     conn.commit()
@@ -293,7 +293,7 @@ def get_medicines():
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute(db.convert_query('SELECT id, name, category, quantity, price, expiry_date, reorder_level FROM medicines WHERE user_id = ?'), (user_id,))
+    cursor.execute('SELECT id, name, category, quantity, price, expiry_date, reorder_level FROM medicines WHERE user_id = ?', (user_id,))
     medicines = cursor.fetchall()
     conn.close()
     
@@ -318,10 +318,10 @@ def add_medicine():
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         INSERT INTO medicines (user_id, name, category, quantity, price, expiry_date, reorder_level)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    '''), (user_id, data['name'], data['category'], data['quantity'], 
+    ''', (user_id, data['name'], data['category'], data['quantity'], 
           data['price'], data['expiry_date'], data.get('reorder_level', 10)))
     
     conn.commit()
@@ -338,11 +338,11 @@ def update_medicine(med_id):
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         UPDATE medicines 
         SET name=?, category=?, quantity=?, price=?, expiry_date=?, reorder_level=?
         WHERE id=? AND user_id=?
-    '''), (data['name'], data['category'], data['quantity'], 
+    ''', (data['name'], data['category'], data['quantity'], 
           data['price'], data['expiry_date'], data.get('reorder_level', 10), med_id, user_id))
     
     conn.commit()
@@ -356,7 +356,7 @@ def delete_medicine(med_id):
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute(db.convert_query('DELETE FROM medicines WHERE id=? AND user_id=?'), (med_id, user_id))
+    cursor.execute('DELETE FROM medicines WHERE id=? AND user_id=?', (med_id, user_id))
     conn.commit()
     conn.close()
     
@@ -372,7 +372,7 @@ def add_sale():
     cursor = conn.cursor()
     
     # Check stock (only user's own medicines)
-    cursor.execute(db.convert_query('SELECT quantity, price FROM medicines WHERE id=? AND user_id=?'), (data['medicine_id'], user_id))
+    cursor.execute('SELECT quantity, price FROM medicines WHERE id=? AND user_id=?', (data['medicine_id'], user_id))
     result = cursor.fetchone()
     
     if not result:
@@ -388,15 +388,15 @@ def add_sale():
     # Record sale with current date and time
     total_price = price * data['quantity']
     sale_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         INSERT INTO sales (user_id, medicine_id, quantity, total_price, sale_date, payment_method)
         VALUES (?, ?, ?, ?, ?, ?)
-    '''), (user_id, data['medicine_id'], data['quantity'], total_price, sale_datetime, payment_method))
+    ''', (user_id, data['medicine_id'], data['quantity'], total_price, sale_datetime, payment_method))
     
     # Update stock
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         UPDATE medicines SET quantity = quantity - ? WHERE id = ? AND user_id = ?
-    '''), (data['quantity'], data['medicine_id'], user_id))
+    ''', (data['quantity'], data['medicine_id'], user_id))
     
     conn.commit()
     conn.close()
@@ -409,7 +409,7 @@ def get_sales():
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         SELECT s.id, m.name, s.quantity, s.total_price, s.sale_date, 
                COALESCE(s.payment_method, 'cash') as payment_method
         FROM sales s
@@ -417,7 +417,7 @@ def get_sales():
         WHERE s.user_id = ?
         ORDER BY s.id DESC
         LIMIT 50
-    '''), (user_id,))
+    ''', (user_id,))
     sales = cursor.fetchall()
     conn.close()
     
@@ -442,7 +442,7 @@ def get_predictions():
     cursor = conn.cursor()
     
     # Get only user's medicines
-    cursor.execute(db.convert_query('SELECT id, name FROM medicines WHERE user_id = ?'), (user_id,))
+    cursor.execute('SELECT id, name FROM medicines WHERE user_id = ?', (user_id,))
     medicines = cursor.fetchall()
     conn.close()
     
@@ -463,7 +463,7 @@ def get_medicine_prediction(med_id):
     cursor = conn.cursor()
     
     # Verify medicine belongs to user
-    cursor.execute(db.convert_query('SELECT id FROM medicines WHERE id = ? AND user_id = ?'), (med_id, user_id))
+    cursor.execute('SELECT id FROM medicines WHERE id = ? AND user_id = ?', (med_id, user_id))
     if not cursor.fetchone():
         conn.close()
         return jsonify({'error': 'Medicine not found'}), 404
@@ -479,7 +479,7 @@ def get_suppliers():
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute(db.convert_query('SELECT id, name, contact_person, phone, email, address, rating, created_date FROM suppliers WHERE user_id = ?'), (user_id,))
+    cursor.execute('SELECT id, name, contact_person, phone, email, address, rating, created_date FROM suppliers WHERE user_id = ?', (user_id,))
     suppliers = cursor.fetchall()
     conn.close()
     
@@ -505,10 +505,10 @@ def add_supplier():
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         INSERT INTO suppliers (user_id, name, contact_person, phone, email, address, rating, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    '''), (user_id, data['name'], data['contact_person'], data['phone'], 
+    ''', (user_id, data['name'], data['contact_person'], data['phone'], 
           data['email'], data['address'], data.get('rating', 0), 
           datetime.now().strftime('%Y-%m-%d')))
     
@@ -526,11 +526,11 @@ def update_supplier(supplier_id):
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         UPDATE suppliers 
         SET name=?, contact_person=?, phone=?, email=?, address=?, rating=?
         WHERE id=? AND user_id=?
-    '''), (data['name'], data['contact_person'], data['phone'], 
+    ''', (data['name'], data['contact_person'], data['phone'], 
           data['email'], data['address'], data.get('rating', 0), supplier_id, user_id))
     
     conn.commit()
@@ -544,7 +544,7 @@ def delete_supplier(supplier_id):
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute(db.convert_query('DELETE FROM suppliers WHERE id=? AND user_id=?'), (supplier_id, user_id))
+    cursor.execute('DELETE FROM suppliers WHERE id=? AND user_id=?', (supplier_id, user_id))
     conn.commit()
     conn.close()
     
@@ -558,20 +558,20 @@ def get_analytics_summary():
     cursor = conn.cursor()
     
     # Total medicines
-    cursor.execute(db.convert_query('SELECT COUNT(*) FROM medicines WHERE user_id = ?'), (user_id,))
+    cursor.execute('SELECT COUNT(*) FROM medicines WHERE user_id = ?', (user_id,))
     total_medicines = cursor.fetchone()[0]
     
     # Low stock count
-    cursor.execute(db.convert_query('SELECT COUNT(*) FROM medicines WHERE user_id = ? AND quantity <= reorder_level'), (user_id,))
+    cursor.execute('SELECT COUNT(*) FROM medicines WHERE user_id = ? AND quantity <= reorder_level', (user_id,))
     low_stock = cursor.fetchone()[0]
     
     # Total sales today
     today = datetime.now().strftime('%Y-%m-%d')
-    cursor.execute(db.convert_query('SELECT COUNT(*), SUM(total_price) FROM sales WHERE user_id = ? AND sale_date LIKE ?'), (user_id, today + '%'))
+    cursor.execute('SELECT COUNT(*), SUM(total_price) FROM sales WHERE user_id = ? AND sale_date LIKE ?', (user_id, today + '%'))
     today_sales = cursor.fetchone()
     
     # Total revenue
-    cursor.execute(db.convert_query('SELECT SUM(total_price) FROM sales WHERE user_id = ?'), (user_id,))
+    cursor.execute('SELECT SUM(total_price) FROM sales WHERE user_id = ?', (user_id,))
     total_revenue = cursor.fetchone()[0] or 0
     
     conn.close()
@@ -594,21 +594,21 @@ def get_prescriptions():
     cursor = conn.cursor()
     
     if status and status != 'all':
-        cursor.execute(db.convert_query('SELECT id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date FROM prescriptions WHERE user_id = ? AND status = ? ORDER BY created_date DESC'), (user_id, status))
+        cursor.execute('SELECT id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date FROM prescriptions WHERE user_id = ? AND status = ? ORDER BY created_date DESC', (user_id, status))
     else:
-        cursor.execute(db.convert_query('SELECT id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date FROM prescriptions WHERE user_id = ? ORDER BY created_date DESC'), (user_id,))
+        cursor.execute('SELECT id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date FROM prescriptions WHERE user_id = ? ORDER BY created_date DESC', (user_id,))
     
     prescriptions = cursor.fetchall()
     
     result = []
     for presc in prescriptions:
         # Get prescription items
-        cursor.execute(db.convert_query('''
+        cursor.execute('''
             SELECT pi.id, pi.prescription_id, pi.medicine_id, pi.quantity, pi.dosage, pi.duration, m.name as medicine_name
             FROM prescription_items pi
             JOIN medicines m ON pi.medicine_id = m.id
             WHERE pi.prescription_id = ?
-        '''), (presc[0],))
+        ''', (presc[0],))
         items = cursor.fetchall()
         
         result.append({
@@ -641,10 +641,10 @@ def add_prescription():
     cursor = conn.cursor()
     
     # Insert prescription
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         INSERT INTO prescriptions (user_id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    '''), (user_id, data['patient_name'], data['patient_phone'], data['doctor_name'],
+    ''', (user_id, data['patient_name'], data['patient_phone'], data['doctor_name'],
           data['prescription_date'], 'pending', data.get('notes', ''),
           datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     
@@ -652,10 +652,10 @@ def add_prescription():
     
     # Insert prescription items
     for item in data['items']:
-        cursor.execute(db.convert_query('''
+        cursor.execute('''
             INSERT INTO prescription_items (prescription_id, medicine_id, quantity, dosage, duration)
             VALUES (?, ?, ?, ?, ?)
-        '''), (prescription_id, item['medicine_id'], item['quantity'], item['dosage'], item['duration']))
+        ''', (prescription_id, item['medicine_id'], item['quantity'], item['dosage'], item['duration']))
     
     conn.commit()
     conn.close()
@@ -670,15 +670,15 @@ def update_prescription_status(prescription_id):
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute(db.convert_query('UPDATE prescriptions SET status = ? WHERE id = ? AND user_id = ?'), (data['status'], prescription_id, user_id))
+    cursor.execute('UPDATE prescriptions SET status = ? WHERE id = ? AND user_id = ?', (data['status'], prescription_id, user_id))
     
     # If completing prescription, update inventory
     if data['status'] == 'completed':
-        cursor.execute(db.convert_query('SELECT medicine_id, quantity FROM prescription_items WHERE prescription_id = ?'), (prescription_id,))
+        cursor.execute('SELECT medicine_id, quantity FROM prescription_items WHERE prescription_id = ?', (prescription_id,))
         items = cursor.fetchall()
         
         for item in items:
-            cursor.execute(db.convert_query('UPDATE medicines SET quantity = quantity - ? WHERE id = ? AND user_id = ?'), (item[1], item[0], user_id))
+            cursor.execute('UPDATE medicines SET quantity = quantity - ? WHERE id = ? AND user_id = ?', (item[1], item[0], user_id))
     
     conn.commit()
     conn.close()
@@ -691,8 +691,8 @@ def delete_prescription(prescription_id):
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute(db.convert_query('DELETE FROM prescription_items WHERE prescription_id = ?'), (prescription_id,))
-    cursor.execute(db.convert_query('DELETE FROM prescriptions WHERE id = ? AND user_id = ?'), (prescription_id, user_id))
+    cursor.execute('DELETE FROM prescription_items WHERE prescription_id = ?', (prescription_id,))
+    cursor.execute('DELETE FROM prescriptions WHERE id = ? AND user_id = ?', (prescription_id, user_id))
     conn.commit()
     conn.close()
     
@@ -738,11 +738,11 @@ def get_organization(org_id):
     
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         SELECT id, name, subdomain, contact_email, contact_phone, address, 
                subscription_plan, subscription_status, created_date, expiry_date, max_users, settings
         FROM organizations WHERE id = ?
-    '''), (org_id,))
+    ''', (org_id,))
     org = cursor.fetchone()
     
     if not org:
@@ -750,7 +750,7 @@ def get_organization(org_id):
         return jsonify({'error': 'Organization not found'}), 404
     
     # Get user count
-    cursor.execute(db.convert_query('SELECT COUNT(*) FROM users WHERE organization_id = ?'), (org_id,))
+    cursor.execute('SELECT COUNT(*) FROM users WHERE organization_id = ?', (org_id,))
     user_count = cursor.fetchone()[0]
     
     conn.close()
@@ -782,11 +782,11 @@ def update_organization(org_id):
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         UPDATE organizations 
         SET name=?, contact_email=?, contact_phone=?, address=?, settings=?
         WHERE id=?
-    '''), (data['name'], data['contact_email'], data.get('contact_phone', ''), 
+    ''', (data['name'], data['contact_email'], data.get('contact_phone', ''), 
           data.get('address', ''), data.get('settings', '{}'), org_id))
     
     conn.commit()
@@ -806,11 +806,11 @@ def update_subscription(org_id):
     cursor = conn.cursor()
     
     # Update subscription plan
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         UPDATE organizations 
         SET subscription_plan=?, subscription_status=?, expiry_date=?, max_users=?
         WHERE id=?
-    '''), (data['subscription_plan'], data.get('subscription_status', 'active'),
+    ''', (data['subscription_plan'], data.get('subscription_status', 'active'),
           data.get('expiry_date'), data.get('max_users', 5), org_id))
     
     conn.commit()
@@ -829,10 +829,10 @@ def get_users():
     organization_id = request.current_user['organization_id']
     conn = db.get_connection()
     cursor = conn.cursor()
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         SELECT id, username, full_name, email, role, created_date, last_login 
         FROM users WHERE organization_id = ?
-    '''), (organization_id,))
+    ''', (organization_id,))
     users = cursor.fetchall()
     conn.close()
     
@@ -862,9 +862,9 @@ def add_user():
     cursor = conn.cursor()
     
     # Check user limit
-    cursor.execute(db.convert_query('SELECT max_users FROM organizations WHERE id = ?'), (organization_id,))
+    cursor.execute('SELECT max_users FROM organizations WHERE id = ?', (organization_id,))
     max_users = cursor.fetchone()[0]
-    cursor.execute(db.convert_query('SELECT COUNT(*) FROM users WHERE organization_id = ?'), (organization_id,))
+    cursor.execute('SELECT COUNT(*) FROM users WHERE organization_id = ?', (organization_id,))
     user_count = cursor.fetchone()[0]
     
     if user_count >= max_users:
@@ -872,7 +872,7 @@ def add_user():
         return jsonify({'error': 'Maximum user limit reached'}), 403
     
     # Check if username or email already exists in organization
-    cursor.execute(db.convert_query('SELECT id FROM users WHERE organization_id = ? AND (username = ? OR email = ?)'), 
+    cursor.execute('SELECT id FROM users WHERE organization_id = ? AND (username = ? OR email = ?)', 
                    (organization_id, data['username'], data['email']))
     if cursor.fetchone():
         conn.close()
@@ -880,10 +880,10 @@ def add_user():
     
     # Create new user
     hashed_password = hash_password(data['password'])
-    cursor.execute(db.convert_query('''
+    cursor.execute('''
         INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    '''), (organization_id, data['username'], hashed_password, data['full_name'], 
+    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
           data['email'], data.get('role', 'user'), datetime.now().strftime('%Y-%m-%d')))
     
     conn.commit()
@@ -904,7 +904,7 @@ def delete_user(user_id):
     cursor = conn.cursor()
     
     # Check if user belongs to same organization
-    cursor.execute(db.convert_query('SELECT role FROM users WHERE id = ? AND organization_id = ?'), (user_id, organization_id))
+    cursor.execute('SELECT role FROM users WHERE id = ? AND organization_id = ?', (user_id, organization_id))
     user = cursor.fetchone()
     if not user:
         conn.close()
@@ -912,13 +912,13 @@ def delete_user(user_id):
     
     # Prevent deleting the last admin
     if user[0] == 'admin':
-        cursor.execute(db.convert_query('SELECT COUNT(*) FROM users WHERE organization_id = ? AND role = ?'), (organization_id, 'admin'))
+        cursor.execute('SELECT COUNT(*) FROM users WHERE organization_id = ? AND role = ?', (organization_id, 'admin'))
         admin_count = cursor.fetchone()[0]
         if admin_count <= 1:
             conn.close()
             return jsonify({'error': 'Cannot delete the last admin user'}), 400
     
-    cursor.execute(db.convert_query('DELETE FROM users WHERE id = ? AND organization_id = ?'), (user_id, organization_id))
+    cursor.execute('DELETE FROM users WHERE id = ? AND organization_id = ?', (user_id, organization_id))
     conn.commit()
     conn.close()
     
