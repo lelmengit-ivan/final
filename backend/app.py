@@ -637,14 +637,29 @@ def get_prescriptions():
 def add_prescription():
     data = request.json
     user_id = request.current_user['user_id']
+    
+    # Validate required fields
+    if not data.get('patient_name') or not data.get('doctor_name') or not data.get('prescription_date'):
+        return jsonify({'error': 'Missing required fields'}), 400
+    
+    if not data.get('items') or len(data['items']) == 0:
+        return jsonify({'error': 'Prescription must have at least one item'}), 400
+    
     conn = db.get_connection()
     cursor = conn.cursor()
+    
+    # Validate all medicines exist and belong to user
+    for item in data['items']:
+        cursor.execute(db.convert_query('SELECT id FROM medicines WHERE id = ? AND user_id = ?'), (item['medicine_id'], user_id))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'error': f'Medicine with ID {item["medicine_id"]} not found'}), 404
     
     # Insert prescription
     cursor.execute(db.convert_query('''
         INSERT INTO prescriptions (user_id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    '''), (user_id, data['patient_name'], data['patient_phone'], data['doctor_name'],
+    '''), (user_id, data['patient_name'], data.get('patient_phone', ''), data['doctor_name'],
           data['prescription_date'], 'pending', data.get('notes', ''),
           datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
     
@@ -670,15 +685,35 @@ def update_prescription_status(prescription_id):
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute(db.convert_query('UPDATE prescriptions SET status = ? WHERE id = ? AND user_id = ?'), (data['status'], prescription_id, user_id))
+    # Verify prescription belongs to user
+    cursor.execute(db.convert_query('SELECT status FROM prescriptions WHERE id = ? AND user_id = ?'), (prescription_id, user_id))
+    prescription = cursor.fetchone()
+    if not prescription:
+        conn.close()
+        return jsonify({'error': 'Prescription not found'}), 404
     
-    # If completing prescription, update inventory
+    # If completing prescription, validate stock first
     if data['status'] == 'completed':
         cursor.execute(db.convert_query('SELECT medicine_id, quantity FROM prescription_items WHERE prescription_id = ?'), (prescription_id,))
         items = cursor.fetchall()
         
+        # Validate stock availability
+        for item in items:
+            cursor.execute(db.convert_query('SELECT quantity FROM medicines WHERE id = ? AND user_id = ?'), (item[0], user_id))
+            medicine = cursor.fetchone()
+            if not medicine:
+                conn.close()
+                return jsonify({'error': f'Medicine with ID {item[0]} not found'}), 404
+            if medicine[0] < item[1]:
+                conn.close()
+                return jsonify({'error': f'Insufficient stock for medicine ID {item[0]}. Available: {medicine[0]}, Required: {item[1]}'}), 400
+        
+        # Update inventory
         for item in items:
             cursor.execute(db.convert_query('UPDATE medicines SET quantity = quantity - ? WHERE id = ? AND user_id = ?'), (item[1], item[0], user_id))
+    
+    # Update prescription status
+    cursor.execute(db.convert_query('UPDATE prescriptions SET status = ? WHERE id = ? AND user_id = ?'), (data['status'], prescription_id, user_id))
     
     conn.commit()
     conn.close()
@@ -691,6 +726,19 @@ def delete_prescription(prescription_id):
     user_id = request.current_user['user_id']
     conn = db.get_connection()
     cursor = conn.cursor()
+    
+    # Check if prescription exists and belongs to user
+    cursor.execute(db.convert_query('SELECT status FROM prescriptions WHERE id = ? AND user_id = ?'), (prescription_id, user_id))
+    prescription = cursor.fetchone()
+    if not prescription:
+        conn.close()
+        return jsonify({'error': 'Prescription not found'}), 404
+    
+    # Prevent deletion of completed prescriptions (optional - remove if you want to allow)
+    if prescription[0] == 'completed':
+        conn.close()
+        return jsonify({'error': 'Cannot delete completed prescriptions'}), 400
+    
     cursor.execute(db.convert_query('DELETE FROM prescription_items WHERE prescription_id = ?'), (prescription_id,))
     cursor.execute(db.convert_query('DELETE FROM prescriptions WHERE id = ? AND user_id = ?'), (prescription_id, user_id))
     conn.commit()
