@@ -1,5 +1,5 @@
-// Use relative URL so it works on both local and production
-const API_URL = window.location.origin + '/api';
+// API Configuration - can be overridden by config.js
+const API_URL = window.CONFIG?.API_URL || window.location.origin + '/api';
 
 // Store chart instances
 let charts = {};
