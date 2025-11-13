@@ -7,15 +7,21 @@ from functools import wraps
 import sqlite3
 import hashlib
 import jwt
+import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-jwt-secret-key-change-in-production-12345678'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-jwt-secret-key-change-in-production-12345678')
 app.config['JWT_EXPIRATION_HOURS'] = 24
 
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 db = PharmacyDB()
 predictor = StockPredictor()
+
+# Helper function to get correct SQL placeholder
+def get_placeholder():
+    """Return correct SQL placeholder based on database type"""
+    return '%s' if db.use_postgres else '?'
 
 # Helper function to hash passwords
 def hash_password(password):
@@ -205,20 +211,22 @@ def login():
     
     # Login with organization_id (if provided) or email/username
     if data.get('organization_id'):
-        cursor.execute('''
+        query = db.convert_query('''
             SELECT u.id, u.username, u.full_name, u.email, u.role, u.organization_id, o.name
             FROM users u
             JOIN organizations o ON u.organization_id = o.id
             WHERE u.organization_id = ? AND u.username = ? AND u.password = ?
-        ''', (data['organization_id'], email_or_username, hashed_password))
+        ''')
+        cursor.execute(query, (data['organization_id'], email_or_username, hashed_password))
     else:
         # Try email first, then username
-        cursor.execute('''
+        query = db.convert_query('''
             SELECT u.id, u.username, u.full_name, u.email, u.role, u.organization_id, o.name
             FROM users u
             JOIN organizations o ON u.organization_id = o.id
             WHERE (u.email = ? OR u.username = ?) AND u.password = ?
-        ''', (email_or_username, email_or_username, hashed_password))
+        ''')
+        cursor.execute(query, (email_or_username, email_or_username, hashed_password))
     
     user = cursor.fetchone()
     

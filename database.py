@@ -37,6 +37,12 @@ class PharmacyDB:
         else:
             return sqlite3.connect(self.db_name)
     
+    def convert_query(self, query):
+        """Convert SQLite query (?) to PostgreSQL query (%s) if needed"""
+        if self.use_postgres:
+            return query.replace('?', '%s')
+        return query
+    
     def init_db(self):
         conn = self.get_connection()
         cursor = conn.cursor()
