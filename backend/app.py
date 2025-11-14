@@ -16,7 +16,7 @@ app.config['JWT_EXPIRATION_HOURS'] = 24
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 db = PharmacyDB()
-predictor = StockPredictor()
+predictor = StockPredictor(db=db)
 
 # Helper function to get correct SQL placeholder
 def get_placeholder():
