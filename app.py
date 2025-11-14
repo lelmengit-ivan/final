@@ -27,10 +27,11 @@ def get_placeholder():
 def get_last_insert_id(cursor, table_name, insert_query, params):
     """Execute insert and return the last inserted ID, compatible with both SQLite and PostgreSQL"""
     if db.use_postgres:
-        # PostgreSQL: use RETURNING id
-        # Remove trailing whitespace and add RETURNING id
+        # PostgreSQL: use RETURNING id after the VALUES clause
         query_with_returning = insert_query.strip()
-        if not query_with_returning.upper().endswith('RETURNING ID'):
+        # Check if RETURNING is already in the query
+        if 'RETURNING' not in query_with_returning.upper():
+            # Simply append RETURNING id at the end (after the closing parenthesis of VALUES)
             query_with_returning += ' RETURNING id'
         cursor.execute(db.convert_query(query_with_returning), params)
         return cursor.fetchone()[0]
