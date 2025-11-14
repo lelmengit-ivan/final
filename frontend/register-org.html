@@ -296,7 +296,12 @@
             };
             
             try {
-                const response = await fetch('/api/organizations/register', {
+                // Use the backend API URL
+                const API_URL = window.location.origin.includes('localhost') 
+                    ? 'http://localhost:5000/api'
+                    : 'https://pharmacy-backened.onrender.com/api';
+                
+                const response = await fetch(`${API_URL}/organizations/register`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
