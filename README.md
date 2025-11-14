@@ -617,6 +617,7 @@ This project is inspired by the need to improve healthcare accessibility and med
 - **Issues**: Open an issue on GitHub
 - **Deployment**: [Render.com](https://render.com)
 - **Database**: PostgreSQL on Render
+- **Email**: ivan.danger.04@gmail.com
 
 ---
 
@@ -624,7 +625,7 @@ This project is inspired by the need to improve healthcare accessibility and med
 
 **Local Development:** http://localhost:5000  
 **Default Login:** admin / admin123  
-**Production:** https://your-app.onrender.com
+**Production:** https://pharmacy-4gjn.onrender.com/
 
 ---
 
@@ -688,3 +689,4 @@ This system is designed to be:
 - **Reduce**: Medicine waste by 30-40%
 - **Improve**: Healthcare delivery efficiency by 35%
 - **Enable**: Data-driven healthcare decisions
+
