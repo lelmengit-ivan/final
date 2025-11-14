@@ -28,7 +28,10 @@ def get_last_insert_id(cursor, table_name, insert_query, params):
     """Execute insert and return the last inserted ID, compatible with both SQLite and PostgreSQL"""
     if db.use_postgres:
         # PostgreSQL: use RETURNING id
-        query_with_returning = insert_query.rstrip().rstrip(')') + ' RETURNING id'
+        # Remove trailing whitespace and add RETURNING id
+        query_with_returning = insert_query.strip()
+        if not query_with_returning.upper().endswith('RETURNING ID'):
+            query_with_returning += ' RETURNING id'
         cursor.execute(db.convert_query(query_with_returning), params)
         return cursor.fetchone()[0]
     else:
@@ -654,45 +657,51 @@ def get_prescriptions():
 @app.route('/api/prescriptions', methods=['POST'])
 @token_required
 def add_prescription():
-    data = request.json
-    user_id = request.current_user['user_id']
-    
-    # Validate required fields
-    if not data.get('patient_name') or not data.get('doctor_name') or not data.get('prescription_date'):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    if not data.get('items') or len(data['items']) == 0:
-        return jsonify({'error': 'Prescription must have at least one item'}), 400
-    
-    conn = db.get_connection()
-    cursor = conn.cursor()
-    
-    # Validate all medicines exist and belong to user
-    for item in data['items']:
-        cursor.execute(db.convert_query('SELECT id FROM medicines WHERE id = ? AND user_id = ?'), (item['medicine_id'], user_id))
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({'error': f'Medicine with ID {item["medicine_id"]} not found'}), 404
-    
-    # Insert prescription
-    prescription_id = get_last_insert_id(cursor, 'prescriptions', '''
-        INSERT INTO prescriptions (user_id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (user_id, data['patient_name'], data.get('patient_phone', ''), data['doctor_name'],
-          data['prescription_date'], 'pending', data.get('notes', ''),
-          datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    
-    # Insert prescription items
-    for item in data['items']:
-        cursor.execute(db.convert_query('''
-            INSERT INTO prescription_items (prescription_id, medicine_id, quantity, dosage, duration)
-            VALUES (?, ?, ?, ?, ?)
-        '''), (prescription_id, item['medicine_id'], item['quantity'], item['dosage'], item['duration']))
-    
-    conn.commit()
-    conn.close()
-    
-    return jsonify({'id': prescription_id, 'message': 'Prescription created successfully'})
+    try:
+        data = request.json
+        user_id = request.current_user['user_id']
+        
+        # Validate required fields
+        if not data.get('patient_name') or not data.get('doctor_name') or not data.get('prescription_date'):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        if not data.get('items') or len(data['items']) == 0:
+            return jsonify({'error': 'Prescription must have at least one item'}), 400
+        
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        
+        # Validate all medicines exist and belong to user
+        for item in data['items']:
+            cursor.execute(db.convert_query('SELECT id FROM medicines WHERE id = ? AND user_id = ?'), (item['medicine_id'], user_id))
+            if not cursor.fetchone():
+                conn.close()
+                return jsonify({'error': f'Medicine with ID {item["medicine_id"]} not found'}), 404
+        
+        # Insert prescription
+        prescription_id = get_last_insert_id(cursor, 'prescriptions', '''
+            INSERT INTO prescriptions (user_id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (user_id, data['patient_name'], data.get('patient_phone', ''), data['doctor_name'],
+              data['prescription_date'], 'pending', data.get('notes', ''),
+              datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
+        
+        # Insert prescription items
+        for item in data['items']:
+            cursor.execute(db.convert_query('''
+                INSERT INTO prescription_items (prescription_id, medicine_id, quantity, dosage, duration)
+                VALUES (?, ?, ?, ?, ?)
+            '''), (prescription_id, item['medicine_id'], item['quantity'], item['dosage'], item['duration']))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'id': prescription_id, 'message': 'Prescription created successfully'})
+    except Exception as e:
+        print(f"Error adding prescription: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to add prescription', 'details': str(e)}), 500
 
 @app.route('/api/prescriptions/<int:prescription_id>/status', methods=['PUT'])
 @token_required
