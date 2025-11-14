@@ -301,6 +301,9 @@
                     ? 'http://localhost:5000/api'
                     : 'https://pharmacy-backened.onrender.com/api';
                 
+                console.log('Registering organization with API:', API_URL);
+                console.log('Data:', data);
+                
                 const response = await fetch(`${API_URL}/organizations/register`, {
                     method: 'POST',
                     headers: {
@@ -309,7 +312,10 @@
                     body: JSON.stringify(data)
                 });
                 
+                console.log('Response status:', response.status);
+                
                 const result = await response.json();
+                console.log('Response data:', result);
                 
                 if (response.ok) {
                     showAlert('Organization registered successfully! Redirecting to login...', 'success');
@@ -317,10 +323,13 @@
                         window.location.href = '/login';
                     }, 2000);
                 } else {
-                    showAlert(result.error || 'Registration failed', 'error');
+                    const errorMsg = result.error || 'Registration failed';
+                    const details = result.details ? ` - ${result.details}` : '';
+                    showAlert(errorMsg + details, 'error');
                 }
             } catch (error) {
-                showAlert('Network error. Please try again.', 'error');
+                console.error('Registration error:', error);
+                showAlert(`Network error: ${error.message}. Please check console for details.`, 'error');
             }
         });
         
