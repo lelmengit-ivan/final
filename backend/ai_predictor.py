@@ -1,24 +1,26 @@
-import sqlite3
 from datetime import datetime, timedelta
 from collections import defaultdict
 import json
 
 class StockPredictor:
-    def __init__(self, db_name='pharmacy.db'):
-        self.db_name = db_name
+    def __init__(self, db=None):
+        self.db = db
     
     def get_sales_history(self, medicine_id, days=30):
-        conn = sqlite3.connect(self.db_name)
+        if not self.db:
+            return []
+        
+        conn = self.db.get_connection()
         cursor = conn.cursor()
         
         date_threshold = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-        cursor.execute('''
+        cursor.execute(self.db.convert_query('''
             SELECT sale_date, SUM(quantity) as total_qty
             FROM sales
             WHERE medicine_id = ? AND sale_date >= ?
             GROUP BY sale_date
             ORDER BY sale_date
-        ''', (medicine_id, date_threshold))
+        '''), (medicine_id, date_threshold))
         
         results = cursor.fetchall()
         conn.close()
@@ -40,9 +42,12 @@ class StockPredictor:
         predicted_demand = round(avg_daily_sales * days_ahead)
         
         # Get current stock
-        conn = sqlite3.connect(self.db_name)
+        if not self.db:
+            return {'predicted_demand': predicted_demand, 'confidence': 'low', 'recommendation': 'Database not available'}
+        
+        conn = self.db.get_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT quantity, reorder_level FROM medicines WHERE id = ?', (medicine_id,))
+        cursor.execute(self.db.convert_query('SELECT quantity, reorder_level FROM medicines WHERE id = ?'), (medicine_id,))
         result = cursor.fetchone()
         conn.close()
         
@@ -116,7 +121,10 @@ class StockPredictor:
     
     def get_expiry_predictions(self):
         """Get medicines that will expire soon"""
-        conn = sqlite3.connect(self.db_name)
+        if not self.db:
+            return []
+        
+        conn = self.db.get_connection()
         cursor = conn.cursor()
         
         today = datetime.now()
@@ -124,12 +132,12 @@ class StockPredictor:
         sixty_days = (today + timedelta(days=60)).strftime('%Y-%m-%d')
         ninety_days = (today + timedelta(days=90)).strftime('%Y-%m-%d')
         
-        cursor.execute('''
+        cursor.execute(self.db.convert_query('''
             SELECT id, name, quantity, expiry_date, price
             FROM medicines
             WHERE expiry_date <= ?
             ORDER BY expiry_date
-        ''', (ninety_days,))
+        '''), (ninety_days,))
         
         medicines = cursor.fetchall()
         conn.close()
@@ -186,11 +194,14 @@ class StockPredictor:
     
     def get_top_selling_drugs(self, limit=10, days=30):
         """Get top-selling medicines"""
-        conn = sqlite3.connect(self.db_name)
+        if not self.db:
+            return []
+        
+        conn = self.db.get_connection()
         cursor = conn.cursor()
         
         date_threshold = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
-        cursor.execute('''
+        cursor.execute(self.db.convert_query('''
             SELECT m.id, m.name, m.category, 
                    SUM(s.quantity) as total_sold,
                    SUM(s.total_price) as total_revenue,
@@ -201,7 +212,7 @@ class StockPredictor:
             GROUP BY m.id
             ORDER BY total_sold DESC
             LIMIT ?
-        ''', (date_threshold, limit))
+        '''), (date_threshold, limit))
         
         results = cursor.fetchall()
         conn.close()
@@ -224,13 +235,16 @@ class StockPredictor:
     
     def get_slow_moving_drugs(self, limit=10, days=30):
         """Get slow-moving medicines"""
-        conn = sqlite3.connect(self.db_name)
+        if not self.db:
+            return []
+        
+        conn = self.db.get_connection()
         cursor = conn.cursor()
         
         date_threshold = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
         
         # Get all medicines with their sales
-        cursor.execute('''
+        cursor.execute(self.db.convert_query('''
             SELECT m.id, m.name, m.category, m.quantity, m.price,
                    COALESCE(SUM(s.quantity), 0) as total_sold
             FROM medicines m
@@ -239,7 +253,7 @@ class StockPredictor:
             HAVING m.quantity > 0
             ORDER BY total_sold ASC, m.quantity DESC
             LIMIT ?
-        ''', (date_threshold, limit))
+        '''), (date_threshold, limit))
         
         results = cursor.fetchall()
         conn.close()
@@ -278,9 +292,12 @@ class StockPredictor:
         return slow_movers
     
     def get_all_predictions(self):
-        conn = sqlite3.connect(self.db_name)
+        if not self.db:
+            return []
+        
+        conn = self.db.get_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT id, name FROM medicines')
+        cursor.execute(self.db.convert_query('SELECT id, name FROM medicines'))
         medicines = cursor.fetchall()
         conn.close()
         
