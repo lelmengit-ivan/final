@@ -553,36 +553,44 @@ def delete_supplier(supplier_id):
 @app.route('/api/analytics/summary', methods=['GET'])
 @token_required
 def get_analytics_summary():
-    user_id = request.current_user['user_id']
-    conn = db.get_connection()
-    cursor = conn.cursor()
-    
-    # Total medicines
-    cursor.execute(db.convert_query('SELECT COUNT(*) FROM medicines WHERE user_id = ?'), (user_id,))
-    total_medicines = cursor.fetchone()[0]
-    
-    # Low stock count
-    cursor.execute(db.convert_query('SELECT COUNT(*) FROM medicines WHERE user_id = ? AND quantity <= reorder_level'), (user_id,))
-    low_stock = cursor.fetchone()[0]
-    
-    # Total sales today
-    today = datetime.now().strftime('%Y-%m-%d')
-    cursor.execute(db.convert_query('SELECT COUNT(*), SUM(total_price) FROM sales WHERE user_id = ? AND sale_date LIKE ?'), (user_id, today + '%'))
-    today_sales = cursor.fetchone()
-    
-    # Total revenue
-    cursor.execute(db.convert_query('SELECT SUM(total_price) FROM sales WHERE user_id = ?'), (user_id,))
-    total_revenue = cursor.fetchone()[0] or 0
-    
-    conn.close()
-    
-    return jsonify({
-        'total_medicines': total_medicines,
-        'low_stock_count': low_stock,
-        'today_sales_count': today_sales[0] or 0,
-        'today_revenue': today_sales[1] or 0,
-        'total_revenue': total_revenue
-    })
+    try:
+        user_id = request.current_user['user_id']
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        
+        # Total medicines
+        cursor.execute(db.convert_query('SELECT COUNT(*) FROM medicines WHERE user_id = ?'), (user_id,))
+        total_medicines = cursor.fetchone()[0]
+        
+        # Low stock count
+        cursor.execute(db.convert_query('SELECT COUNT(*) FROM medicines WHERE user_id = ? AND quantity <= reorder_level'), (user_id,))
+        low_stock = cursor.fetchone()[0]
+        
+        # Total sales today - use date comparison instead of LIKE for better compatibility
+        today = datetime.now().strftime('%Y-%m-%d')
+        cursor.execute(db.convert_query('''
+            SELECT COUNT(*), COALESCE(SUM(total_price), 0) 
+            FROM sales 
+            WHERE user_id = ? AND sale_date >= ? AND sale_date < ?
+        '''), (user_id, today + ' 00:00:00', today + ' 23:59:59'))
+        today_sales = cursor.fetchone()
+        
+        # Total revenue
+        cursor.execute(db.convert_query('SELECT COALESCE(SUM(total_price), 0) FROM sales WHERE user_id = ?'), (user_id,))
+        total_revenue = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return jsonify({
+            'total_medicines': total_medicines,
+            'low_stock_count': low_stock,
+            'today_sales_count': today_sales[0] or 0,
+            'today_revenue': float(today_sales[1] or 0),
+            'total_revenue': float(total_revenue or 0)
+        })
+    except Exception as e:
+        print(f"Error loading analytics: {str(e)}")
+        return jsonify({'error': 'Failed to load analytics', 'details': str(e)}), 500
 
 # Prescription endpoints
 @app.route('/api/prescriptions', methods=['GET'])
