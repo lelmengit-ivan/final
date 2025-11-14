@@ -23,6 +23,19 @@ def get_placeholder():
     """Return correct SQL placeholder based on database type"""
     return '%s' if db.use_postgres else '?'
 
+# Helper function to get last inserted ID
+def get_last_insert_id(cursor, table_name, insert_query, params):
+    """Execute insert and return the last inserted ID, compatible with both SQLite and PostgreSQL"""
+    if db.use_postgres:
+        # PostgreSQL: use RETURNING id
+        query_with_returning = insert_query.rstrip().rstrip(')') + ' RETURNING id'
+        cursor.execute(db.convert_query(query_with_returning), params)
+        return cursor.fetchone()[0]
+    else:
+        # SQLite: use lastrowid
+        cursor.execute(db.convert_query(insert_query), params)
+        return cursor.lastrowid
+
 # Helper function to hash passwords
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
@@ -114,29 +127,25 @@ def register_organization():
             return jsonify({'error': 'Subdomain already taken'}), 400
     
     # Create organization
-    cursor.execute(db.convert_query('''
+    organization_id = get_last_insert_id(cursor, 'organizations', '''
         INSERT INTO organizations (name, subdomain, contact_email, contact_phone, address, 
                                    subscription_plan, subscription_status, created_date, 
                                    expiry_date, max_users, settings)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    '''), (data['organization_name'], data.get('subdomain'), data['contact_email'], 
+    ''', (data['organization_name'], data.get('subdomain'), data['contact_email'], 
           data.get('contact_phone', ''), data.get('address', ''), 
           data.get('subscription_plan', 'free'), 'active', 
           datetime.now().strftime('%Y-%m-%d'),
           (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
           data.get('max_users', 5), '{}'))
     
-    organization_id = cursor.lastrowid
-    
     # Create admin user for the organization
     hashed_password = hash_password(data['password'])
-    cursor.execute(db.convert_query('''
+    user_id = get_last_insert_id(cursor, 'users', '''
         INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    '''), (organization_id, data['username'], hashed_password, data['full_name'], 
+    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
           data['email'], 'admin', datetime.now().strftime('%Y-%m-%d')))
-    
-    user_id = cursor.lastrowid
     conn.commit()
     conn.close()
     
@@ -186,14 +195,13 @@ def register():
     
     # Create new user
     hashed_password = hash_password(data['password'])
-    cursor.execute(db.convert_query('''
+    user_id = get_last_insert_id(cursor, 'users', '''
         INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    '''), (organization_id, data['username'], hashed_password, data['full_name'], 
+    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
           data['email'], 'user', datetime.now().strftime('%Y-%m-%d')))
     
     conn.commit()
-    user_id = cursor.lastrowid
     conn.close()
     
     return jsonify({'message': 'Registration successful', 'user_id': user_id})
@@ -318,14 +326,13 @@ def add_medicine():
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute(db.convert_query('''
+    med_id = get_last_insert_id(cursor, 'medicines', '''
         INSERT INTO medicines (user_id, name, category, quantity, price, expiry_date, reorder_level)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    '''), (user_id, data['name'], data['category'], data['quantity'], 
+    ''', (user_id, data['name'], data['category'], data['quantity'], 
           data['price'], data['expiry_date'], data.get('reorder_level', 10)))
     
     conn.commit()
-    med_id = cursor.lastrowid
     conn.close()
     
     return jsonify({'id': med_id, 'message': 'Medicine added successfully'})
@@ -505,15 +512,14 @@ def add_supplier():
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute(db.convert_query('''
+    supplier_id = get_last_insert_id(cursor, 'suppliers', '''
         INSERT INTO suppliers (user_id, name, contact_person, phone, email, address, rating, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    '''), (user_id, data['name'], data['contact_person'], data['phone'], 
+    ''', (user_id, data['name'], data['contact_person'], data['phone'], 
           data['email'], data['address'], data.get('rating', 0), 
           datetime.now().strftime('%Y-%m-%d')))
     
     conn.commit()
-    supplier_id = cursor.lastrowid
     conn.close()
     
     return jsonify({'id': supplier_id, 'message': 'Supplier added successfully'})
@@ -669,14 +675,12 @@ def add_prescription():
             return jsonify({'error': f'Medicine with ID {item["medicine_id"]} not found'}), 404
     
     # Insert prescription
-    cursor.execute(db.convert_query('''
+    prescription_id = get_last_insert_id(cursor, 'prescriptions', '''
         INSERT INTO prescriptions (user_id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    '''), (user_id, data['patient_name'], data.get('patient_phone', ''), data['doctor_name'],
+    ''', (user_id, data['patient_name'], data.get('patient_phone', ''), data['doctor_name'],
           data['prescription_date'], 'pending', data.get('notes', ''),
           datetime.now().strftime('%Y-%m-%d %H:%M:%S')))
-    
-    prescription_id = cursor.lastrowid
     
     # Insert prescription items
     for item in data['items']:
@@ -937,14 +941,13 @@ def add_user():
     
     # Create new user
     hashed_password = hash_password(data['password'])
-    cursor.execute(db.convert_query('''
+    user_id = get_last_insert_id(cursor, 'users', '''
         INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    '''), (organization_id, data['username'], hashed_password, data['full_name'], 
+    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
           data['email'], data.get('role', 'user'), datetime.now().strftime('%Y-%m-%d')))
     
     conn.commit()
-    user_id = cursor.lastrowid
     conn.close()
     
     return jsonify({'id': user_id, 'message': 'User added successfully'})
