@@ -43,6 +43,16 @@ class PharmacyDB:
             return query.replace('?', '%s')
         return query
     
+    def get_insert_id(self, cursor, table_name):
+        """Get the last inserted ID - works for both SQLite and PostgreSQL"""
+        if self.use_postgres:
+            # PostgreSQL: get the last value from the sequence
+            cursor.execute(f"SELECT currval(pg_get_serial_sequence('{table_name}', 'id'))")
+            return cursor.fetchone()[0]
+        else:
+            # SQLite: use lastrowid
+            return cursor.lastrowid
+    
     def init_db(self):
         conn = self.get_connection()
         cursor = conn.cursor()
