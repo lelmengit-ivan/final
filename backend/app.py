@@ -588,49 +588,54 @@ def get_analytics_summary():
 @app.route('/api/prescriptions', methods=['GET'])
 @token_required
 def get_prescriptions():
-    user_id = request.current_user['user_id']
-    status = request.args.get('status', None)
-    conn = db.get_connection()
-    cursor = conn.cursor()
-    
-    if status and status != 'all':
-        cursor.execute(db.convert_query('SELECT id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date FROM prescriptions WHERE user_id = ? AND status = ? ORDER BY created_date DESC'), (user_id, status))
-    else:
-        cursor.execute(db.convert_query('SELECT id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date FROM prescriptions WHERE user_id = ? ORDER BY created_date DESC'), (user_id,))
-    
-    prescriptions = cursor.fetchall()
-    
-    result = []
-    for presc in prescriptions:
-        # Get prescription items
-        cursor.execute(db.convert_query('''
-            SELECT pi.id, pi.prescription_id, pi.medicine_id, pi.quantity, pi.dosage, pi.duration, m.name as medicine_name
-            FROM prescription_items pi
-            JOIN medicines m ON pi.medicine_id = m.id
-            WHERE pi.prescription_id = ?
-        '''), (presc[0],))
-        items = cursor.fetchall()
+    try:
+        user_id = request.current_user['user_id']
+        status = request.args.get('status', None)
+        conn = db.get_connection()
+        cursor = conn.cursor()
         
-        result.append({
-            'id': presc[0],
-            'patient_name': presc[1],
-            'patient_phone': presc[2],
-            'doctor_name': presc[3],
-            'prescription_date': presc[4],
-            'status': presc[5],
-            'notes': presc[6],
-            'created_date': presc[7],
-            'items': [{
-                'medicine_id': item[2],
-                'medicine_name': item[6],
-                'quantity': item[3],
-                'dosage': item[4],
-                'duration': item[5]
-            } for item in items]
-        })
-    
-    conn.close()
-    return jsonify(result)
+        if status and status != 'all':
+            cursor.execute(db.convert_query('SELECT id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date FROM prescriptions WHERE user_id = ? AND status = ? ORDER BY created_date DESC'), (user_id, status))
+        else:
+            cursor.execute(db.convert_query('SELECT id, patient_name, patient_phone, doctor_name, prescription_date, status, notes, created_date FROM prescriptions WHERE user_id = ? ORDER BY created_date DESC'), (user_id,))
+        
+        prescriptions = cursor.fetchall()
+        
+        result = []
+        for presc in prescriptions:
+            # Get prescription items
+            cursor.execute(db.convert_query('''
+                SELECT pi.id, pi.prescription_id, pi.medicine_id, pi.quantity, pi.dosage, pi.duration, 
+                       COALESCE(m.name, 'Unknown Medicine') as medicine_name
+                FROM prescription_items pi
+                LEFT JOIN medicines m ON pi.medicine_id = m.id
+                WHERE pi.prescription_id = ?
+            '''), (presc[0],))
+            items = cursor.fetchall()
+            
+            result.append({
+                'id': presc[0],
+                'patient_name': presc[1],
+                'patient_phone': presc[2],
+                'doctor_name': presc[3],
+                'prescription_date': presc[4],
+                'status': presc[5],
+                'notes': presc[6],
+                'created_date': presc[7],
+                'items': [{
+                    'medicine_id': item[2],
+                    'medicine_name': item[6],
+                    'quantity': item[3],
+                    'dosage': item[4],
+                    'duration': item[5]
+                } for item in items]
+            })
+        
+        conn.close()
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error loading prescriptions: {str(e)}")
+        return jsonify({'error': 'Failed to load prescriptions', 'details': str(e)}), 500
 
 @app.route('/api/prescriptions', methods=['POST'])
 @token_required
