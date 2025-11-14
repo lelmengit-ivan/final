@@ -119,45 +119,59 @@ def serve_static(path):
 # Organization registration endpoint
 @app.route('/api/organizations/register', methods=['POST'])
 def register_organization():
-    data = request.json
-    conn = db.get_connection()
-    cursor = conn.cursor()
-    
-    # Check if subdomain already exists
-    if data.get('subdomain'):
-        cursor.execute(db.convert_query('SELECT id FROM organizations WHERE subdomain = ?'), (data['subdomain'],))
-        if cursor.fetchone():
-            conn.close()
-            return jsonify({'error': 'Subdomain already taken'}), 400
-    
-    # Create organization
-    organization_id = get_last_insert_id(cursor, 'organizations', '''
-        INSERT INTO organizations (name, subdomain, contact_email, contact_phone, address, 
-                                   subscription_plan, subscription_status, created_date, 
-                                   expiry_date, max_users, settings)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (data['organization_name'], data.get('subdomain'), data['contact_email'], 
-          data.get('contact_phone', ''), data.get('address', ''), 
-          data.get('subscription_plan', 'free'), 'active', 
-          datetime.now().strftime('%Y-%m-%d'),
-          (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
-          data.get('max_users', 5), '{}'))
-    
-    # Create admin user for the organization
-    hashed_password = hash_password(data['password'])
-    user_id = get_last_insert_id(cursor, 'users', '''
-        INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (organization_id, data['username'], hashed_password, data['full_name'], 
-          data['email'], 'admin', datetime.now().strftime('%Y-%m-%d')))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({
-        'message': 'Organization registered successfully',
-        'organization_id': organization_id,
-        'user_id': user_id
-    })
+    try:
+        data = request.json
+        
+        # Validate required fields
+        required_fields = ['organization_name', 'contact_email', 'username', 'password', 'full_name', 'email']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        
+        # Check if subdomain already exists
+        if data.get('subdomain'):
+            cursor.execute(db.convert_query('SELECT id FROM organizations WHERE subdomain = ?'), (data['subdomain'],))
+            if cursor.fetchone():
+                conn.close()
+                return jsonify({'error': 'Subdomain already taken'}), 400
+        
+        # Create organization
+        organization_id = get_last_insert_id(cursor, 'organizations', '''
+            INSERT INTO organizations (name, subdomain, contact_email, contact_phone, address, 
+                                       subscription_plan, subscription_status, created_date, 
+                                       expiry_date, max_users, settings)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (data['organization_name'], data.get('subdomain'), data['contact_email'], 
+              data.get('contact_phone', ''), data.get('address', ''), 
+              data.get('subscription_plan', 'free'), 'active', 
+              datetime.now().strftime('%Y-%m-%d'),
+              (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d'),
+              data.get('max_users', 5), '{}'))
+        
+        # Create admin user for the organization
+        hashed_password = hash_password(data['password'])
+        user_id = get_last_insert_id(cursor, 'users', '''
+            INSERT INTO users (organization_id, username, password, full_name, email, role, created_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (organization_id, data['username'], hashed_password, data['full_name'], 
+              data['email'], 'admin', datetime.now().strftime('%Y-%m-%d')))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Organization registered successfully',
+            'organization_id': organization_id,
+            'user_id': user_id
+        })
+    except Exception as e:
+        print(f"Error registering organization: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to register organization', 'details': str(e)}), 500
 
 # Authentication endpoints
 @app.route('/api/register', methods=['POST'])
